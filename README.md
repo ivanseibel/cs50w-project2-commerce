@@ -11,8 +11,11 @@ Design an eBay-like e-commerce auction site that will allow users to post auctio
 
 Some extra features to improve the project.
 
-- [ ] Under construction 🚧
-
+- [ ] Replace SQLite by MySQL
+- [ ] CD workflow for AWS
+- [ ] Online demo
+- [ ] CD workflow for GCloud
+- [ ] CD workflow for Heroku
 
 ## **Deploy Workflow**
 
@@ -27,9 +30,9 @@ Some extra features to improve the project.
 
 # **Commerce**
 
-![https://cs50.harvard.edu/web/2020/projects/2/images/listings.png](https://cs50.harvard.edu/web/2020/projects/2/images/listings.png)
+![Active Listings](https://cs50.harvard.edu/web/2020/projects/2/images/listings.png "Active Listings")
 
-![https://cs50.harvard.edu/web/2020/projects/2/images/listing.png](https://cs50.harvard.edu/web/2020/projects/2/images/listing.png)
+![Listing: Broomstick](https://cs50.harvard.edu/web/2020/projects/2/images/listing.png "Listing: Broomstick")
 
 ## **Understanding**
 
