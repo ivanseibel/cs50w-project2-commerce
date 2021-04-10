@@ -11,7 +11,7 @@ Design an eBay-like e-commerce auction site that will allow users to post auctio
 
 Some extra features to improve the project.
 
-- [ ] Replace SQLite by MySQL
+- [ ] Replace SQLite with MySQL
 - [ ] CD workflow for AWS
 - [ ] Online demo
 - [ ] CD workflow for GCloud
