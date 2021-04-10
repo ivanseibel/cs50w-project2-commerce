@@ -31,13 +31,6 @@ Some extra features to improve the project.
 
 ![https://cs50.harvard.edu/web/2020/projects/2/images/listing.png](https://cs50.harvard.edu/web/2020/projects/2/images/listing.png)
 
-## **Getting Started**
-
-1. Download the distribution code from [https://cdn.cs50.net/web/2020/spring/projects/2/commerce.zip](https://cdn.cs50.net/web/2020/spring/projects/2/commerce.zip) and unzip it.
-2. In your terminal, `cd` into the `commerce` directory.
-3. Run `python manage.py makemigrations auctions` to make migrations for the `auctions` app.
-4. Run `python manage.py migrate` to apply migrations to your database.
-
 ## **Understanding**
 
 In the distribution code is a Django project called `commerce` that contains a single app called `auctions`.
