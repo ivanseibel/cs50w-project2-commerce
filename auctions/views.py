@@ -10,6 +10,8 @@ from django import forms
 import sys
 from .models import User, Auction, Category
 from django.shortcuts import get_object_or_404
+from django.db import connections
+
 
 class AuctionForm(forms.Form):
     title = forms.CharField(required=True)
@@ -19,6 +21,9 @@ class AuctionForm(forms.Form):
 
 
 def index(request):
+    with connections['default'].cursor() as cursor:
+        cursor.execute("SELECT a.id, a.starting_bid, (SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id) as bid_value FROM auctions_auction a")
+
     auctions = Auction.objects.all()
 
     return render(request, "auctions/index.html",{
