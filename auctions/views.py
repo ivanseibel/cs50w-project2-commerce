@@ -5,9 +5,11 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from decimal import Decimal
+from django.core.exceptions import ValidationError
 from django import forms
 import sys
 from .models import User, Auction, Category
+from django.shortcuts import get_object_or_404
 
 class AuctionForm(forms.Form):
     title = forms.CharField(required=True)
@@ -17,7 +19,11 @@ class AuctionForm(forms.Form):
 
 
 def index(request):
-    return render(request, "auctions/index.html")
+    auctions = Auction.objects.all()
+
+    return render(request, "auctions/index.html",{
+        "auctions": auctions
+    })
 
 
 def login_view(request):
@@ -99,9 +105,9 @@ def create_auction(request):
             )
             auction.save()
         except:
-            print("Unexpected error:", sys.exc_info()[0])
+            error = sys.exc_info()[0]
             return render(request, "auctions/create-auction.html", {
-                "message": "Testing errors."
+                "message": error
             })
 
         return HttpResponseRedirect(reverse("index"))
@@ -114,43 +120,47 @@ def create_auction(request):
 
 
 @login_required(login_url='login', )
-def update_auction(request):
-    if request.method == "PUT":
+def update_auction(request, auction_id):
+    categories = Category.objects.all()
+    try:     
+        auction = Auction.objects.get(pk=auction_id)
+        print(auction.title)
+    except (Auction.DoesNotExist, ValidationError) as error:
+        auction = None
+        print(error)
+
+    if auction == None:
+        return HttpResponseRedirect(reverse("index"))
+    
+    if request.user.id != auction.user.id:
+        return HttpResponseRedirect(reverse("index"))
+
+    if request.method == "POST":
         form = AuctionForm(request.POST)
         if not form.is_valid():
             return render(request, "auctions/update-auction.html", {
-                "message": form.errors.as_text
+                "message": form.errors.as_text,
+                "categories": categories,
+                "auction": auction,
             })
 
-        title = request.POST["title"]
-        description = request.POST["description"]
-        starting_bid = Decimal(request.POST["starting_bid"])
-        photo_url = request.POST["photo_url"]
-        user_id = request.POST["user_id"]
-        category_id = request.POST["category_id"]
+        auction.title = request.POST["title"]
+        auction.description = request.POST["description"]
+        auction.starting_bid = Decimal(request.POST["starting_bid"])
+        auction.photo_url = request.POST["photo_url"]
+        auction.category_id = request.POST["category_id"]
 
         try:
-            auction = Auction(
-                title=title, 
-                description=description, 
-                starting_bid=starting_bid, 
-                photo_url=photo_url, 
-                user_id=user_id, 
-                category_id=category_id
-            )
             auction.save()
         except:
-            print("Unexpected error:", sys.exc_info()[0])
+            error = sys.exc_info()[0]
             return render(request, "auctions/update-auction.html", {
-                "message": "Testing errors."
+                "message": error
             })
 
         return HttpResponseRedirect(reverse("index"))
 
     if request.method == 'GET':
-        auction_id = "cd76c4a13ead49489b679027daf0ca2f"
-        categories = Category.objects.all()
-        auction = Auction.objects.get(id=auction_id)
         return render(request, "auctions/update-auction.html", {
             "categories": categories,
             "auction": auction,

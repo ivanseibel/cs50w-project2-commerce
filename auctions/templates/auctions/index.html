@@ -3,5 +3,23 @@
 {% block body %}
     <h2>Active Listings</h2>
 
-    TODO
+    {% for auction in auctions %}
+        <div class="card mb-3" style="padding: 20px;">
+            <div class="row g-0">
+            <div class="col-md-4" style="align-items: center; justify-content: center; display: flex;" >
+                <img src="{{ auction.photo_url }}" alt="{{ auction.title }}" width="300px" >
+            </div>
+            <div class="col-md-8">
+                <div class="card-body">
+                <h5 class="card-title" style="font-weight: bold;">{{ auction.title }}</h5>
+                <p class="card-text" style="font-weight: bold;">Price: ${{ auction.starting_bid }}</p>
+                <p class="card-text">{{ auction.description }}</p>
+                <p class="card-text"><small class="text-muted">Created at <span class="created_at">
+                    {{ auction.created_at|date:"Y-m-d H:i T" }}
+                </span></small></p>
+                </div>
+            </div>
+            </div>
+        </div>
+    {% endfor %}
 {% endblock %}
