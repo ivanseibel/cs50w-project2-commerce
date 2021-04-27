@@ -13,6 +13,14 @@ from django.shortcuts import get_object_or_404
 from django.db import connections
 
 
+def dictfetchall(cursor):
+    "Return all rows from a cursor as a dict"
+    columns = [col[0] for col in cursor.description]
+    return [
+        dict(zip(columns, row))
+        for row in cursor.fetchall()
+    ]
+
 class AuctionForm(forms.Form):
     title = forms.CharField(required=True)
     description = forms.CharField(required=True)
@@ -22,9 +30,19 @@ class AuctionForm(forms.Form):
 
 def index(request):
     with connections['default'].cursor() as cursor:
-        cursor.execute("SELECT a.id, a.starting_bid, (SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id) as bid_value FROM auctions_auction a")
-
-    auctions = Auction.objects.all()
+        sql = ' \
+            SELECT \
+                a.id, \
+                a.photo_url, \
+                a.title, \
+                a.description, \
+                a.starting_bid, \
+                COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
+                created_at \
+            FROM auctions_auction a \
+        '
+        cursor.execute(sql)
+        auctions = dictfetchall(cursor)
 
     return render(request, "auctions/index.html",{
         "auctions": auctions
