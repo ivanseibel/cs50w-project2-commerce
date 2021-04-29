@@ -1,0 +1,38 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+    <h2>Listing: {{ auctions.0.title }}</h2>
+
+    <div class="card mb-3">
+        <img src="{{ auctions.0.photo_url }}" alt="{{ auctions.0.title }}" class="card-img-top" style="width: 50%;max-width: 700px;" >
+        <div class="card-body">
+          <h5 class="card-title">Card title</h5>
+          <p class="card-text">This is a wider card with supporting text below as a natural lead-in to additional content. This content is a little bit longer.</p>
+          <p class="card-text"><small class="text-muted">Last updated 3 mins ago</small></p>
+        </div>
+    </div>
+
+    <!-- {% for auction in auctions %}
+        <div class="card mb-3" style="padding: 20px;">
+            <div class="row g-0">
+                <div class="col-md-4" style="align-items: center; justify-content: center; display: flex;" >
+                    <img src="{{ auctions.0.photo_url }}" alt="{{ auctions.0.title }}" width="300px" >
+                </div>
+                <div class="col-md-8">
+                    <div class="card-body">
+                    <h5 class="card-title" style="font-weight: bold;">{{ auctions.0.title }}</h5>
+                    {% if auctions.0.max_bid > 0 and auctions.0.max_bid > auctions.0.starting_bid %}
+                        <p class="card-text" style="font-weight: bold;">Price: ${{ auctions.0.max_bid|floatformat:2 }}</p>
+                    {% else %}
+                        <p class="card-text" style="font-weight: bold;">Price: ${{ auctions.0.starting_bid|floatformat:2 }}</p>
+                    {% endif %}
+                    <p class="card-text">{{ auctions.0.description }}</p>
+                    <p class="card-text"><small class="text-muted">Created at <span class="created_at">
+                        {{ auctions.0.created_at|date:"Y-m-d H:i T" }}
+                    </span></small></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %} -->
+{% endblock %}
