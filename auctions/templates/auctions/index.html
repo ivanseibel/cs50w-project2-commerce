@@ -6,7 +6,9 @@
         <div class="card mb-3" style="padding: 20px;">
             <div class="row g-0">
             <div class="col-md-4" style="align-items: center; justify-content: center; display: flex;" >
-                <img src="{{ auction.photo_url }}" alt="{{ auction.title }}" width="300px" >
+                <a href="{% url 'show_auction' auction_id=auction.id %}">
+                    <img src="{{ auction.photo_url }}" alt="{{ auction.title }}" width="300px" >
+                </a>
             </div>
             <div class="col-md-8">
                 <div class="card-body">
