@@ -188,3 +188,26 @@ def update_auction(request, auction_id):
             "categories": categories,
             "auction": auction,
         })
+
+
+def show_auction(request, auction_id):
+    with connections['default'].cursor() as cursor:
+        sql = ' \
+            SELECT \
+                a.id, \
+                a.photo_url, \
+                a.title, \
+                a.description, \
+                a.starting_bid, \
+                COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
+                created_at \
+            FROM auctions_auction a \
+            WHERE \
+                a.id = %s \
+        '
+        cursor.execute(sql, [auction_id])
+        auctions = dictfetchall(cursor)
+
+    return render(request, "auctions/show-auction.html",{
+        "auctions": auctions
+    })
