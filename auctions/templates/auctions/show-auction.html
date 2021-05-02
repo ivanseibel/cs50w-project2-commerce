@@ -6,33 +6,33 @@
     <div class="card mb-3">
         <img src="{{ auctions.0.photo_url }}" alt="{{ auctions.0.title }}" class="card-img-top" style="width: 50%;max-width: 700px;" >
         <div class="card-body">
-          <h5 class="card-title">Card title</h5>
-          <p class="card-text">This is a wider card with supporting text below as a natural lead-in to additional content. This content is a little bit longer.</p>
-          <p class="card-text"><small class="text-muted">Last updated 3 mins ago</small></p>
+            <p class="card-text">
+                {{ auctions.0.description }}
+            </p>
+            <h4 class="card-title">
+                <p class="card-text" style="font-weight: bold;">${{ value_to_show|floatformat:2 }}</p>
+            </h4>
+            <p class="card-text">
+                <form action="{% url 'show_auction' auction_id=auctions.0.id %}" method="POST">
+                    <div class="form-group">
+                        <small class="text-muted">
+                            {{ auctions.0.bid_count }} bids(s) so far. Your bid is the current bid.
+                        </small>
+                        <input class="form-control" min="{{ auctions.0.starting_bid }}" type="number" step="0.01" name="bid_value" placeholder="Bid" value="{{ value_to_show|floatformat:2 }}" >
+                        <br>
+                        <input class="btn btn-primary" type="submit" value="Place Bid">
+                    </div>
+                </form>
+            </p>
+            <p>
+            <h5>
+                Details
+            </h5>  
+            <ul>
+                <li>Listed by: <span style="color: blue;">{{ auctions.0.username }}</span></li>
+                <li>Category: {{ auctions.0.category_name }}</li>
+            </ul>
+            </p>
         </div>
     </div>
-
-    <!-- {% for auction in auctions %}
-        <div class="card mb-3" style="padding: 20px;">
-            <div class="row g-0">
-                <div class="col-md-4" style="align-items: center; justify-content: center; display: flex;" >
-                    <img src="{{ auctions.0.photo_url }}" alt="{{ auctions.0.title }}" width="300px" >
-                </div>
-                <div class="col-md-8">
-                    <div class="card-body">
-                    <h5 class="card-title" style="font-weight: bold;">{{ auctions.0.title }}</h5>
-                    {% if auctions.0.max_bid > 0 and auctions.0.max_bid > auctions.0.starting_bid %}
-                        <p class="card-text" style="font-weight: bold;">Price: ${{ auctions.0.max_bid|floatformat:2 }}</p>
-                    {% else %}
-                        <p class="card-text" style="font-weight: bold;">Price: ${{ auctions.0.starting_bid|floatformat:2 }}</p>
-                    {% endif %}
-                    <p class="card-text">{{ auctions.0.description }}</p>
-                    <p class="card-text"><small class="text-muted">Created at <span class="created_at">
-                        {{ auctions.0.created_at|date:"Y-m-d H:i T" }}
-                    </span></small></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    {% endfor %} -->
 {% endblock %}

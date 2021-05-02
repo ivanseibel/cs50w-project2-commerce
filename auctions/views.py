@@ -79,6 +79,8 @@ def register(request):
     if request.method == "POST":
         username = request.POST["username"]
         email = request.POST["email"]
+        first_name = request.POST["first_name"]
+        last_name = request.POST["last_name"]
 
         # Ensure password matches confirmation
         password = request.POST["password"]
@@ -90,7 +92,13 @@ def register(request):
 
         # Attempt to create new user
         try:
-            user = User.objects.create_user(username, email, password)
+            user = User.objects.create_user(
+                username=username, 
+                email=email, 
+                first_name=first_name, 
+                last_name=last_name, 
+                password=password
+            )
             user.save()
         except IntegrityError:
             return render(request, "auctions/register.html", {
@@ -199,15 +207,24 @@ def show_auction(request, auction_id):
                 a.title, \
                 a.description, \
                 a.starting_bid, \
+                u.username, \
+                COALESCE(c.name, "No Category Listed.") as category_name, \
                 COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
-                created_at \
+                COALESCE((SELECT COUNT(b.id) FROM auctions_bid b WHERE b.auction_id = a.id),0) as bid_count, \
+                a.created_at \
             FROM auctions_auction a \
+            INNER JOIN auctions_user u ON u.id = a.user_id \
+            LEFT OUTER JOIN auctions_category c ON c.id = a.category_id \
             WHERE \
                 a.id = %s \
         '
         cursor.execute(sql, [auction_id])
         auctions = dictfetchall(cursor)
+        value_to_show = auctions[0]["starting_bid"] if auctions[0]["starting_bid"] > auctions[0]["max_bid"] else auctions[0]["max_bid"]
+        
+        print(auctions[0])
 
     return render(request, "auctions/show-auction.html",{
-        "auctions": auctions
+        "auctions": auctions,
+        "value_to_show": value_to_show
     })
