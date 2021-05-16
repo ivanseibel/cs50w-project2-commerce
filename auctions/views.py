@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, get_user, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django import forms
 import sys
-from .models import User, Auction, Category
+from .models import User, Auction, Category, Watchlist
 from django.shortcuts import get_object_or_404
 from django.db import connections
 
@@ -20,6 +20,7 @@ def dictfetchall(cursor):
         dict(zip(columns, row))
         for row in cursor.fetchall()
     ]
+
 
 class AuctionForm(forms.Form):
     title = forms.CharField(required=True)
@@ -44,7 +45,7 @@ def index(request):
         cursor.execute(sql)
         auctions = dictfetchall(cursor)
 
-    return render(request, "auctions/index.html",{
+    return render(request, "auctions/index.html", {
         "auctions": auctions
     })
 
@@ -93,10 +94,10 @@ def register(request):
         # Attempt to create new user
         try:
             user = User.objects.create_user(
-                username=username, 
-                email=email, 
-                first_name=first_name, 
-                last_name=last_name, 
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
                 password=password
             )
             user.save()
@@ -108,6 +109,7 @@ def register(request):
         return HttpResponseRedirect(reverse("index"))
     else:
         return render(request, "auctions/register.html")
+
 
 @login_required(login_url='login')
 def create_auction(request):
@@ -127,11 +129,11 @@ def create_auction(request):
 
         try:
             auction = Auction(
-                title=title, 
-                description=description, 
-                starting_bid=starting_bid, 
-                photo_url=photo_url, 
-                user_id=user_id, 
+                title=title,
+                description=description,
+                starting_bid=starting_bid,
+                photo_url=photo_url,
+                user_id=user_id,
                 category_id=category_id
             )
             auction.save()
@@ -153,7 +155,7 @@ def create_auction(request):
 @login_required(login_url='login', )
 def update_auction(request, auction_id):
     categories = Category.objects.all()
-    try:     
+    try:
         auction = Auction.objects.get(pk=auction_id)
         print(auction.title)
     except (Auction.DoesNotExist, ValidationError) as error:
@@ -162,7 +164,7 @@ def update_auction(request, auction_id):
 
     if auction == None:
         return HttpResponseRedirect(reverse("index"))
-    
+
     if request.user.id != auction.user.id:
         return HttpResponseRedirect(reverse("index"))
 
@@ -211,20 +213,49 @@ def show_auction(request, auction_id):
                 COALESCE(c.name, "No Category Listed.") as category_name, \
                 COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
                 COALESCE((SELECT COUNT(b.id) FROM auctions_bid b WHERE b.auction_id = a.id),0) as bid_count, \
-                a.created_at \
+                a.created_at, \
+                w.id as watchlist_id \
             FROM auctions_auction a \
             INNER JOIN auctions_user u ON u.id = a.user_id \
             LEFT OUTER JOIN auctions_category c ON c.id = a.category_id \
+            LEFT OUTER JOIN auctions_watchlist w ON w.auction_id = a.id \
             WHERE \
                 a.id = %s \
         '
         cursor.execute(sql, [auction_id])
         auctions = dictfetchall(cursor)
-        value_to_show = auctions[0]["starting_bid"] if auctions[0]["starting_bid"] > auctions[0]["max_bid"] else auctions[0]["max_bid"]
-        
-        print(auctions[0])
+        value_to_show = auctions[0]["starting_bid"] if auctions[0][
+            "starting_bid"] > auctions[0]["max_bid"] else auctions[0]["max_bid"]
 
-    return render(request, "auctions/show-auction.html",{
+    return render(request, "auctions/show-auction.html", {
         "auctions": auctions,
         "value_to_show": value_to_show
     })
+
+
+def add_watchlist(request, auction_id):
+    # check if GET
+    if request.method == 'GET':
+        # check if has an id
+        if auction_id is not None:
+            # get user id
+            user_id = get_user(request).id
+
+            # add
+            try:
+                watchlist = Watchlist(
+                    auction_id=auction_id,
+                    user_id=user_id
+                )
+                watchlist.save()
+                # redirect to the same item
+                return HttpResponseRedirect(reverse("index"))
+            except:
+                error = sys.exc_info()[0]
+                return HttpResponseRedirect(reverse("index"))
+
+    return HttpResponseRedirect(reverse("index"))
+
+
+def delete_watchlist(request, watchlist_id):
+    return HttpResponseRedirect(reverse("index"))
