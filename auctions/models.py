@@ -17,6 +17,7 @@ class Category(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     objects = models.Manager()
 
+
 class Auction(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=64, null=False)
@@ -25,7 +26,7 @@ class Auction(models.Model):
     photo_url = models.URLField(max_length=255, null=False)
     category = models.ForeignKey(
         'Category',
-        on_delete=models.SET_NULL, 
+        on_delete=models.SET_NULL,
         null=True
     )
     user = models.ForeignKey(
@@ -42,7 +43,7 @@ class Bid(models.Model):
     user = models.ForeignKey(
         'User',
         on_delete=models.CASCADE
-    ),
+    )
     auction = models.ForeignKey(
         'Auction',
         on_delete=models.CASCADE
@@ -57,7 +58,21 @@ class Comment(models.Model):
     user = models.ForeignKey(
         'User',
         on_delete=models.CASCADE
-    ),
+    )
+    auction = models.ForeignKey(
+        'Auction',
+        on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class Watchlist(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        'User',
+        on_delete=models.CASCADE
+    )
     auction = models.ForeignKey(
         'Auction',
         on_delete=models.CASCADE
