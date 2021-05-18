@@ -23,6 +23,8 @@
         <h4 class="card-title">
             <p class="card-text" style="font-weight: bold;">${{ value_to_show|floatformat:2 }}</p>
         </h4>
+
+        {% if user.username and user.username != auctions.0.username %}
         <p class="card-text">
         <form action="{% url 'show_auction' auction_id=auctions.0.id %}" method="POST">
             <div class="form-group">
@@ -36,6 +38,8 @@
             </div>
         </form>
         </p>
+
+        {% endif %}
         <p>
         <h5>
             Details
