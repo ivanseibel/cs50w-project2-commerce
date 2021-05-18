@@ -8,19 +8,50 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django import forms
 import sys
-from .models import User, Auction, Category, Watchlist
+from .models import Bid, User, Auction, Category, Watchlist
 from django.shortcuts import get_object_or_404
 from django.db import connections
 from uuid import UUID
 
 
-def dictfetchall(cursor):
+def dict_fetch_all(cursor):
     "Return all rows from a cursor as a dict"
     columns = [col[0] for col in cursor.description]
     return [
         dict(zip(columns, row))
         for row in cursor.fetchall()
     ]
+
+
+def get_auction(auction_id):
+    with connections['default'].cursor() as cursor:
+        sql = ' \
+            SELECT \
+                a.id, \
+                a.photo_url, \
+                a.title, \
+                a.description, \
+                a.starting_bid, \
+                u.username, \
+                COALESCE(c.name, "No Category Listed.") as category_name, \
+                COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
+                COALESCE((SELECT COUNT(b.id) FROM auctions_bid b WHERE b.auction_id = a.id),0) as bid_count, \
+                a.created_at, \
+                w.id as watchlist_id \
+            FROM auctions_auction a \
+            INNER JOIN auctions_user u ON u.id = a.user_id \
+            LEFT OUTER JOIN auctions_category c ON c.id = a.category_id \
+            LEFT OUTER JOIN auctions_watchlist w ON w.auction_id = a.id \
+            WHERE \
+                a.id = %s \
+        '
+        cursor.execute(sql, [auction_id])
+        auctions = dict_fetch_all(cursor)
+
+    if len(auctions) > 0:
+        return auctions[0]
+    else:
+        None
 
 
 class AuctionForm(forms.Form):
@@ -44,7 +75,7 @@ def index(request):
             FROM auctions_auction a \
         '
         cursor.execute(sql)
-        auctions = dictfetchall(cursor)
+        auctions = dict_fetch_all(cursor)
 
     return render(request, "auctions/index.html", {
         "auctions": auctions
@@ -153,7 +184,7 @@ def create_auction(request):
         })
 
 
-@login_required(login_url='login', )
+@login_required(login_url='login')
 def update_auction(request, auction_id):
     categories = Category.objects.all()
     try:
@@ -202,78 +233,88 @@ def update_auction(request, auction_id):
 
 
 def show_auction(request, auction_id):
-    with connections['default'].cursor() as cursor:
-        sql = ' \
-            SELECT \
-                a.id, \
-                a.photo_url, \
-                a.title, \
-                a.description, \
-                a.starting_bid, \
-                u.username, \
-                COALESCE(c.name, "No Category Listed.") as category_name, \
-                COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
-                COALESCE((SELECT COUNT(b.id) FROM auctions_bid b WHERE b.auction_id = a.id),0) as bid_count, \
-                a.created_at, \
-                w.id as watchlist_id \
-            FROM auctions_auction a \
-            INNER JOIN auctions_user u ON u.id = a.user_id \
-            LEFT OUTER JOIN auctions_category c ON c.id = a.category_id \
-            LEFT OUTER JOIN auctions_watchlist w ON w.auction_id = a.id \
-            WHERE \
-                a.id = %s \
-        '
-        cursor.execute(sql, [auction_id])
-        auctions = dictfetchall(cursor)
-        value_to_show = auctions[0]["starting_bid"] if auctions[0][
-            "starting_bid"] > auctions[0]["max_bid"] else auctions[0]["max_bid"]
+    auction = get_auction(auction_id=auction_id)
+    value_to_show = auction["starting_bid"] if auction[
+        "starting_bid"] > auction["max_bid"] else auction["max_bid"]
 
     return render(request, "auctions/show-auction.html", {
-        "auctions": auctions,
-        "value_to_show": value_to_show
+        "auction": auction,
+        "value_to_show": value_to_show,
+        "message": ""
     })
 
 
+@login_required(login_url='login')
 def add_watchlist(request, auction_id):
-    # check if GET
-    if request.method == 'GET':
-        # check if has an id
-        if auction_id is not None:
-            # get user id
-            user_id = get_user(request).id
+    # get user id
+    user_id = get_user(request).id
 
-            # add
-            try:
-                watchlist = Watchlist(
-                    auction_id=auction_id,
-                    user_id=user_id
-                )
-                watchlist.save()
-                # redirect to the same item
-                return redirect("show_auction", auction_id=auction_id)
-            except:
-                error = sys.exc_info()[0]
-                return HttpResponseRedirect(reverse("index"))
+    # try to add auction to watchlist
+    try:
+        watchlist = Watchlist(
+            auction_id=auction_id,
+            user_id=user_id
+        )
+        watchlist.save()
+        # redirect to the same item
+        return redirect("show_auction", auction_id=auction_id)
+    except:
+        error = sys.exc_info()[0]
 
-    return HttpResponseRedirect(reverse("index"))
+        auction = get_auction(auction_id=auction_id)
+        value_to_show = auction["starting_bid"] if auction[
+            "starting_bid"] > auction["max_bid"] else auction["max_bid"]
+
+        return render(request, "auctions/show-auction.html", {
+            "auction": auction,
+            "value_to_show": value_to_show,
+            "message": error
+        })
 
 
+@login_required(login_url='login')
 def delete_watchlist(request, watchlist_id):
-    # check if GET
-    if request.method == 'GET':
-        # check if has an id
-        if watchlist_id is not None:
-            # delete
-            try:
-                print(watchlist_id)
-                watchlist = Watchlist.objects.filter(id=watchlist_id)
-                auction_id = UUID(str(watchlist[0].auction_id)).hex
-                watchlist.delete()
-                # redirect to the same item
-                return redirect("show_auction", auction_id=auction_id)
-            except:
-                error = sys.exc_info()[0]
-                print(error)
-                return HttpResponseRedirect(reverse("index"))
+    # try to delete an auction from the watchlist
+    try:
+        print(watchlist_id)
+        watchlist = Watchlist.objects.filter(id=watchlist_id)
+        auction_id = UUID(str(watchlist[0].auction_id)).hex
+        watchlist.delete()
+        # redirect to the same item
+        return redirect("show_auction", auction_id=auction_id)
+    except:
+        error = sys.exc_info()[0]
 
-    return HttpResponseRedirect(reverse("index"))
+        auction = get_auction(auction_id=auction_id)
+        value_to_show = auction["starting_bid"] if auction[
+            "starting_bid"] > auction["max_bid"] else auction["max_bid"]
+
+        return render(request, "auctions/show-auction.html", {
+            "auction": auction,
+            "value_to_show": value_to_show,
+            "message": error
+        })
+
+
+# TODO: Add min value validation
+# TODO: Add exception redirection with error message
+@login_required(login_url='login')
+def post_bid(request, auction_id):
+    if request.method == 'POST':
+        value = float(request.POST["bid_value"])
+        user_id = get_user(request).id
+
+        # Attempt to create new user
+        try:
+            bid = Bid.objects.create(
+                value=value,
+                user_id=user_id,
+                auction_id=auction_id,
+            )
+            bid.save()
+        except:
+            error = sys.exc_info()[0]
+            return redirect("show_auction", auction_id=auction_id)
+        return redirect("show_auction", auction_id=auction_id)
+    else:
+        return redirect("show_auction", auction_id=auction_id)
