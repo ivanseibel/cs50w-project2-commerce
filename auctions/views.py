@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate, get_user, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from decimal import Decimal
 from django.core.exceptions import ValidationError
@@ -11,6 +11,7 @@ import sys
 from .models import User, Auction, Category, Watchlist
 from django.shortcuts import get_object_or_404
 from django.db import connections
+from uuid import UUID
 
 
 def dictfetchall(cursor):
@@ -249,7 +250,7 @@ def add_watchlist(request, auction_id):
                 )
                 watchlist.save()
                 # redirect to the same item
-                return HttpResponseRedirect(reverse("index"))
+                return redirect("show_auction", auction_id=auction_id)
             except:
                 error = sys.exc_info()[0]
                 return HttpResponseRedirect(reverse("index"))
@@ -258,4 +259,21 @@ def add_watchlist(request, auction_id):
 
 
 def delete_watchlist(request, watchlist_id):
+    # check if GET
+    if request.method == 'GET':
+        # check if has an id
+        if watchlist_id is not None:
+            # delete
+            try:
+                print(watchlist_id)
+                watchlist = Watchlist.objects.filter(id=watchlist_id)
+                auction_id = UUID(str(watchlist[0].auction_id)).hex
+                watchlist.delete()
+                # redirect to the same item
+                return redirect("show_auction", auction_id=auction_id)
+            except:
+                error = sys.exc_info()[0]
+                print(error)
+                return HttpResponseRedirect(reverse("index"))
+
     return HttpResponseRedirect(reverse("index"))
