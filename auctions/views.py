@@ -34,10 +34,11 @@ def get_auction(auction_id):
                 a.starting_bid, \
                 u.username, \
                 COALESCE(c.name, "No Category Listed.") as category_name, \
-                COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
-                COALESCE((SELECT COUNT(b.id) FROM auctions_bid b WHERE b.auction_id = a.id),0) as bid_count, \
+                COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) AS max_bid, \
+                COALESCE((SELECT COUNT(b.id) FROM auctions_bid b WHERE b.auction_id = a.id),0) AS bid_count, \
                 a.created_at, \
-                w.id as watchlist_id \
+                w.id AS watchlist_id, \
+                (SELECT user_id FROM auctions_bid ab WHERE ab.auction_id = a.id ORDER BY ab.value DESC LIMIT 1) AS user_last_bid \
             FROM auctions_auction a \
             INNER JOIN auctions_user u ON u.id = a.user_id \
             LEFT OUTER JOIN auctions_category c ON c.id = a.category_id \
@@ -296,15 +297,25 @@ def delete_watchlist(request, watchlist_id):
         })
 
 
-# TODO: Add min value validation
-# TODO: Add exception redirection with error message
 @login_required(login_url='login')
 def post_bid(request, auction_id):
     if request.method == 'POST':
+        auction = get_auction(auction_id=auction_id)
+        value_to_show = auction["starting_bid"] if auction[
+            "starting_bid"] > auction["max_bid"] else auction["max_bid"]
+
         value = float(request.POST["bid_value"])
         user_id = get_user(request).id
 
-        # Attempt to create new user
+        if not value > auction["max_bid"]:
+            formatted_value = "%.2f" % auction["max_bid"]
+            return render(request, "auctions/show-auction.html", {
+                "auction": auction,
+                "value_to_show": value_to_show,
+                "message": f"Your bid must be higher than ${formatted_value}."
+            })
+
+        # Attempt to create new bid
         try:
             bid = Bid.objects.create(
                 value=value,
@@ -312,9 +323,22 @@ def post_bid(request, auction_id):
                 auction_id=auction_id,
             )
             bid.save()
+
+            auction = get_auction(auction_id=auction_id)
+            value_to_show = auction["starting_bid"] if auction[
+                "starting_bid"] > auction["max_bid"] else auction["max_bid"]
+
+            return render(request, "auctions/show-auction.html", {
+                "auction": auction,
+                "value_to_show": value_to_show,
+                "message": None
+            })
         except:
             error = sys.exc_info()[0]
-            return redirect("show_auction", auction_id=auction_id)
-        return redirect("show_auction", auction_id=auction_id)
+            return render(request, "auctions/show-auction.html", {
+                "auction": auction,
+                "value_to_show": value_to_show,
+                "message": error
+            })
     else:
-        return redirect("show_auction", auction_id=auction_id)
+        return HttpResponseRedirect(reverse("index"))
