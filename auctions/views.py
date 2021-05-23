@@ -38,7 +38,8 @@ def get_auction(auction_id):
                 COALESCE((SELECT COUNT(b.id) FROM auctions_bid b WHERE b.auction_id = a.id),0) AS bid_count, \
                 a.created_at, \
                 w.id AS watchlist_id, \
-                (SELECT user_id FROM auctions_bid ab WHERE ab.auction_id = a.id ORDER BY ab.value DESC LIMIT 1) AS user_last_bid \
+                (SELECT user_id FROM auctions_bid ab WHERE ab.auction_id = a.id ORDER BY ab.value DESC LIMIT 1) AS user_last_bid, \
+                a.closed \
             FROM auctions_auction a \
             INNER JOIN auctions_user u ON u.id = a.user_id \
             LEFT OUTER JOIN auctions_category c ON c.id = a.category_id \
