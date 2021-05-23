@@ -100,7 +100,6 @@ def index(request):
             '
 
             user_id = get_user(request).id
-            print(sql, user_id)
             cursor.execute(sql, [user_id])
         else:
             sql = sql + '\
@@ -215,7 +214,6 @@ def create_auction(request):
         return HttpResponseRedirect(reverse("index"))
     else:
         categories = Category.objects.all()
-        # print(categories[0].name)
         return render(request, "auctions/create-auction.html", {
             "categories": categories
         })
@@ -226,10 +224,9 @@ def update_auction(request, auction_id):
     categories = Category.objects.all()
     try:
         auction = Auction.objects.get(pk=auction_id)
-        print(auction.title)
     except (Auction.DoesNotExist, ValidationError) as error:
+        # TODO: Add better error catch
         auction = None
-        print(error)
 
     if auction == None:
         # TODO: return error Auction doesn't exist
