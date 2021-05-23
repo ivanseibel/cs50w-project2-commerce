@@ -56,6 +56,21 @@ def get_auction(auction_id):
         None
 
 
+def render_show_auction(request, auction_id, message):
+    auction = get_auction(auction_id=auction_id)
+    value_to_show = auction["starting_bid"] if auction[
+        "starting_bid"] > auction["max_bid"] else auction["max_bid"]
+    comments = Comment.objects.filter(
+        auction_id=auction_id).order_by("-created_at")
+
+    return render(request, "auctions/show-auction.html", {
+        "auction": auction,
+        "value_to_show": value_to_show,
+        "comments": comments,
+        "message": message
+    })
+
+
 class AuctionForm(forms.Form):
     title = forms.CharField(required=True)
     description = forms.CharField(required=True)
@@ -198,9 +213,11 @@ def update_auction(request, auction_id):
         print(error)
 
     if auction == None:
+        # TODO: return error Auction doesn't exist
         return HttpResponseRedirect(reverse("index"))
 
     if request.user.id != auction.user.id:
+        # TODO: return Auction update denied
         return HttpResponseRedirect(reverse("index"))
 
     if request.method == "POST":
@@ -220,13 +237,12 @@ def update_auction(request, auction_id):
 
         try:
             auction.save()
+            return redirect("show_auction", auction_id=UUID(str(auction_id)).hex)
         except:
             error = sys.exc_info()[0]
             return render(request, "auctions/update-auction.html", {
                 "message": error
             })
-
-        return HttpResponseRedirect(reverse("index"))
 
     if request.method == 'GET':
         return render(request, "auctions/update-auction.html", {
@@ -236,18 +252,7 @@ def update_auction(request, auction_id):
 
 
 def show_auction(request, auction_id):
-    auction = get_auction(auction_id=auction_id)
-    value_to_show = auction["starting_bid"] if auction[
-        "starting_bid"] > auction["max_bid"] else auction["max_bid"]
-    comments = Comment.objects.filter(
-        auction_id=auction_id).order_by("-created_at")
-
-    return render(request, "auctions/show-auction.html", {
-        "auction": auction,
-        "value_to_show": value_to_show,
-        "comments": comments,
-        "message": ""
-    })
+    return render_show_auction(request=request, auction_id=auction_id, message="")
 
 
 @login_required(login_url='login')
@@ -266,26 +271,17 @@ def add_watchlist(request, auction_id):
         return redirect("show_auction", auction_id=auction_id)
     except:
         error = sys.exc_info()[0]
-
-        auction = get_auction(auction_id=auction_id)
-        value_to_show = auction["starting_bid"] if auction[
-            "starting_bid"] > auction["max_bid"] else auction["max_bid"]
-        comments = Comment.objects.filter(
-            auction_id=auction_id).order_by("-created_at")
-
-        return render(request, "auctions/show-auction.html", {
-            "auction": auction,
-            "value_to_show": value_to_show,
-            "comments": comments,
-            "message": error
-        })
+        return render_show_auction(
+            request=request,
+            auction_id=auction_id,
+            message=error
+        )
 
 
 @login_required(login_url='login')
 def delete_watchlist(request, watchlist_id):
     # try to delete an auction from the watchlist
     try:
-        print(watchlist_id)
         watchlist = Watchlist.objects.filter(id=watchlist_id)
         auction_id = UUID(str(watchlist[0].auction_id)).hex
         watchlist.delete()
@@ -293,41 +289,29 @@ def delete_watchlist(request, watchlist_id):
         return redirect("show_auction", auction_id=auction_id)
     except:
         error = sys.exc_info()[0]
-
-        auction = get_auction(auction_id=auction_id)
-        value_to_show = auction["starting_bid"] if auction[
-            "starting_bid"] > auction["max_bid"] else auction["max_bid"]
-        comments = Comment.objects.filter(
-            auction_id=auction_id).order_by("-created_at")
-
-        return render(request, "auctions/show-auction.html", {
-            "auction": auction,
-            "value_to_show": value_to_show,
-            "comments": comments,
-            "message": error
-        })
+        return render_show_auction(
+            request=request,
+            auction_id=auction_id,
+            message=error
+        )
 
 
 @login_required(login_url='login')
 def post_bid(request, auction_id):
     if request.method == 'POST':
-        auction = get_auction(auction_id=auction_id)
-        value_to_show = auction["starting_bid"] if auction[
-            "starting_bid"] > auction["max_bid"] else auction["max_bid"]
-        comments = Comment.objects.filter(
-            auction_id=auction_id).order_by("-created_at")
-
         value = float(request.POST["bid_value"])
         user_id = get_user(request).id
+        auction = Auction.objects.get(id=auction_id)
+        bid = auction.bids.all().order_by('-value')[0]
+        max_bid = bid.value if bid != None else 0
 
-        if not value > auction["max_bid"]:
-            formatted_value = "%.2f" % auction["max_bid"]
-            return render(request, "auctions/show-auction.html", {
-                "auction": auction,
-                "value_to_show": value_to_show,
-                "comments": comments,
-                "message": f"Your bid must be higher than ${formatted_value}."
-            })
+        if not value > max_bid:
+            formatted_value = "%.2f" % max_bid
+            return render_show_auction(
+                request=request,
+                auction_id=auction_id,
+                message=f"Your bid must be higher than ${formatted_value}."
+            )
 
         # Attempt to create new bid
         try:
@@ -338,26 +322,14 @@ def post_bid(request, auction_id):
             )
             bid.save()
 
-            auction = get_auction(auction_id=auction_id)
-            value_to_show = auction["starting_bid"] if auction[
-                "starting_bid"] > auction["max_bid"] else auction["max_bid"]
-            comments = Comment.objects.filter(
-                auction_id=auction_id).order_by("-created_at")
-
-            return render(request, "auctions/show-auction.html", {
-                "auction": auction,
-                "value_to_show": value_to_show,
-                "comments": comments,
-                "message": None
-            })
+            return redirect("show_auction", auction_id=auction_id)
         except:
             error = sys.exc_info()[0]
-            return render(request, "auctions/show-auction.html", {
-                "auction": auction,
-                "value_to_show": value_to_show,
-                "comments": comments,
-                "message": error
-            })
+            return render_show_auction(
+                request=request,
+                auction_id=auction_id,
+                message=error
+            )
     else:
         return HttpResponseRedirect(reverse("index"))
 
@@ -376,22 +348,15 @@ def close_auction(request, auction_id):
 @login_required(login_url='login')
 def post_comment(request, auction_id):
     if request.method == 'POST':
-        auction = get_auction(auction_id=auction_id)
-        value_to_show = auction["starting_bid"] if auction[
-            "starting_bid"] > auction["max_bid"] else auction["max_bid"]
-        comments = Comment.objects.filter(
-            auction_id=auction_id).order_by("-created_at")
-
         comment_text = request.POST["comment_text"]
         user_id = get_user(request).id
 
         if comment_text == "":
-            return render(request, "auctions/show-auction.html", {
-                "auction": auction,
-                "value_to_show": value_to_show,
-                "comments": comments,
-                "message": "Comment text is required."
-            })
+            return render_show_auction(
+                request=request,
+                auction_id=auction_id,
+                message="Comment text is required."
+            )
 
         # Attempt to create new bid
         try:
@@ -402,25 +367,13 @@ def post_comment(request, auction_id):
             )
             comment.save()
 
-            auction = get_auction(auction_id=auction_id)
-            value_to_show = auction["starting_bid"] if auction[
-                "starting_bid"] > auction["max_bid"] else auction["max_bid"]
-            comments = Comment.objects.filter(
-                auction_id=auction_id).order_by("-created_at")
-
-            return render(request, "auctions/show-auction.html", {
-                "auction": auction,
-                "value_to_show": value_to_show,
-                "comments": comments,
-                "message": None
-            })
+            return redirect("show_auction", auction_id=auction_id)
         except:
             error = sys.exc_info()[0]
-            return render(request, "auctions/show-auction.html", {
-                "auction": auction,
-                "value_to_show": value_to_show,
-                "comments": comments,
-                "message": error
-            })
+            return render_show_auction(
+                request=request,
+                auction_id=auction_id,
+                message=error
+            )
     else:
         return HttpResponseRedirect(reverse("index"))
