@@ -111,6 +111,9 @@ def login_view(request):
         # Check if authentication successful
         if user is not None:
             login(request, user)
+            # Get all user bids
+            user_bids = Bid.objects.filter(user_id=user.id).count()
+            request.session['user_bids'] = user_bids
             return HttpResponseRedirect(reverse("index"))
         else:
             return render(request, "auctions/login.html", {
@@ -321,6 +324,8 @@ def post_bid(request, auction_id):
                 auction_id=auction_id,
             )
             bid.save()
+
+            request.session['user_bids'] = request.session['user_bids'] + 1
 
             return redirect("show_auction", auction_id=auction_id)
         except:
