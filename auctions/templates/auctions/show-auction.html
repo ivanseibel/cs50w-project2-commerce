@@ -78,6 +78,29 @@
             <li>Category: {{ auction.category_name }}</li>
         </ul>
         </p>
+
+        <p class="card-text">
+        <h3>Comments</h3>
+        <form action="{% url 'post_comment' auction_id=auction.id %}" method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <textarea class="form-control" name="comment_text" placeholder="Comment" required></textarea>
+                <br>
+                <input class="btn btn-primary" type="submit" value="Send Your Comment">
+            </div>
+        </form>
+        </p>
+
+        {% for comment in comments %}
+        <p>
+            Date: {{comment.created_at|date:"Y-m-d H:i T"}}
+            Author: {{comment.user.username}}
+            <br>
+            Comment: {{comment.text}}
+        </p>
+        <hr>
+        {% endfor %}
+
     </div>
 </div>
 {% endblock %}
