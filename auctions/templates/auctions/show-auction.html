@@ -50,8 +50,15 @@
             </div>
         </form>
         </p>
-
+        {% elif user.username and user.username == auction.username %}
+        <p class="card-text">
+        <form action="{% url 'close_auction' auction_id=auction.id %}" method="POST">
+            {% csrf_token %}
+            <input class="btn btn-danger" type="submit" value="Close Auction">
+        </form>
+        </p>
         {% endif %}
+
         <p>
         <h5>
             Details
