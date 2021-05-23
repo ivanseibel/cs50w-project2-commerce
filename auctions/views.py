@@ -342,3 +342,14 @@ def post_bid(request, auction_id):
             })
     else:
         return HttpResponseRedirect(reverse("index"))
+
+
+@login_required(login_url='login')
+def close_auction(request, auction_id):
+    if request.method == 'POST':
+        auction = Auction.objects.get(id=auction_id)
+        auction = auction.closed = True
+        auction.save()
+        return HttpResponseRedirect(reverse("index"))
+    else:
+        return HttpResponseRedirect(reverse("index"))
