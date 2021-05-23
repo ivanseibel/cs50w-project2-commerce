@@ -74,6 +74,7 @@ def index(request):
                 COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
                 created_at \
             FROM auctions_auction a \
+            WHERE a.closed = 0 \
         '
         cursor.execute(sql)
         auctions = dict_fetch_all(cursor)
@@ -348,7 +349,7 @@ def post_bid(request, auction_id):
 def close_auction(request, auction_id):
     if request.method == 'POST':
         auction = Auction.objects.get(id=auction_id)
-        auction = auction.closed = True
+        auction.closed = True
         auction.save()
         return HttpResponseRedirect(reverse("index"))
     else:
