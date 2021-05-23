@@ -88,11 +88,26 @@ def index(request):
                 a.description, \
                 a.starting_bid, \
                 COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
-                created_at \
+                a.created_at, \
+                a.closed \
             FROM auctions_auction a \
-            WHERE a.closed = 0 \
+            LEFT OUTER JOIN auctions_watchlist w ON w.auction_id = a.id  \
         '
-        cursor.execute(sql)
+
+        if request.path == "/watchlist":
+            sql = sql + '\
+                WHERE w.user_id = %s \
+            '
+
+            user_id = get_user(request).id
+            print(sql, user_id)
+            cursor.execute(sql, [user_id])
+        else:
+            sql = sql + '\
+                WHERE a.closed=0 \
+            '
+            cursor.execute(sql)
+
         auctions = dict_fetch_all(cursor)
 
     return render(request, "auctions/index.html", {
@@ -112,8 +127,9 @@ def login_view(request):
         if user is not None:
             login(request, user)
             # Get all user bids
-            user_bids = Bid.objects.filter(user_id=user.id).count()
-            request.session['user_bids'] = user_bids
+            user_watching_bids = Watchlist.objects.filter(
+                user_id=user.id).count()
+            request.session['user_watching_bids'] = user_watching_bids
             return HttpResponseRedirect(reverse("index"))
         else:
             return render(request, "auctions/login.html", {
@@ -270,6 +286,8 @@ def add_watchlist(request, auction_id):
             user_id=user_id
         )
         watchlist.save()
+        request.session['user_watching_bids'] = request.session['user_watching_bids'] + 1
+
         # redirect to the same item
         return redirect("show_auction", auction_id=auction_id)
     except:
@@ -288,6 +306,8 @@ def delete_watchlist(request, watchlist_id):
         watchlist = Watchlist.objects.filter(id=watchlist_id)
         auction_id = UUID(str(watchlist[0].auction_id)).hex
         watchlist.delete()
+        request.session['user_watching_bids'] = request.session['user_watching_bids'] - 1
+
         # redirect to the same item
         return redirect("show_auction", auction_id=auction_id)
     except:
@@ -324,8 +344,6 @@ def post_bid(request, auction_id):
                 auction_id=auction_id,
             )
             bid.save()
-
-            request.session['user_bids'] = request.session['user_bids'] + 1
 
             return redirect("show_auction", auction_id=auction_id)
         except:

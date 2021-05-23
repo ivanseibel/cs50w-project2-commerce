@@ -29,8 +29,8 @@
             <a class="nav-link" href="{% url 'create_auction' %}">Create Auction</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="{% url 'index' %}">Watchlist
-                <span class="badge badge-secondary">{{request.session.user_bids}}</span>
+            <a class="nav-link" href="{% url 'watchlist' %}">Watchlist
+                <span class="badge badge-secondary">{{request.session.user_watching_bids}}</span>
             </a>
         </li>
         <li class="nav-item">

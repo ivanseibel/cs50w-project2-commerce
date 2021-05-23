@@ -1,30 +1,35 @@
 {% extends "auctions/layout.html" %}
 
 {% block body %}
-    <h2>Active Listings</h2>
-    {% for auction in auctions %}
-        <div class="card mb-3" style="padding: 20px;">
-            <div class="row g-0">
-            <div class="col-md-4" style="align-items: center; justify-content: center; display: flex;" >
-                <a href="{% url 'show_auction' auction_id=auction.id %}">
-                    <img src="{{ auction.photo_url }}" alt="{{ auction.title }}" width="300px" >
-                </a>
-            </div>
-            <div class="col-md-8">
-                <div class="card-body">
+<h2>Active Listings</h2>
+{% for auction in auctions %}
+<div class="card mb-3" style="padding: 20px;">
+    <div class="row g-0">
+        <div class="col-md-4" style="align-items: center; justify-content: center; display: flex;">
+            <a href="{% url 'show_auction' auction_id=auction.id %}">
+                <img src="{{ auction.photo_url }}" alt="{{ auction.title }}" width="300px">
+            </a>
+        </div>
+        <div class="col-md-8">
+            <div class="card-body">
                 <h5 class="card-title" style="font-weight: bold;">{{ auction.title }}</h5>
                 {% if auction.max_bid > 0 and auction.max_bid > auction.starting_bid %}
-                    <p class="card-text" style="font-weight: bold;">Price: ${{ auction.max_bid|floatformat:2 }}</p>
+                <p class="card-text" style="font-weight: bold;">Price: ${{ auction.max_bid|floatformat:2 }}</p>
                 {% else %}
-                    <p class="card-text" style="font-weight: bold;">Price: ${{ auction.starting_bid|floatformat:2 }}</p>
+                <p class="card-text" style="font-weight: bold;">Price: ${{ auction.starting_bid|floatformat:2 }}</p>
                 {% endif %}
                 <p class="card-text">{{ auction.description }}</p>
+
+                {% if auction.closed == 1 %}
+                <p class="badge badge-secondary">Auction is closed</p>
+                {% endif %}
+
                 <p class="card-text"><small class="text-muted">Created at <span class="created_at">
-                    {{ auction.created_at|date:"Y-m-d H:i T" }}
-                </span></small></p>
-                </div>
-            </div>
+                            {{ auction.created_at|date:"Y-m-d H:i T" }}
+                        </span></small></p>
             </div>
         </div>
-    {% endfor %}
+    </div>
+</div>
+{% endfor %}
 {% endblock %}
