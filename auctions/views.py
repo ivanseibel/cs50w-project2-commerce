@@ -92,15 +92,21 @@ def index(request):
                 a.closed \
             FROM auctions_auction a \
             LEFT OUTER JOIN auctions_watchlist w ON w.auction_id = a.id  \
+            LEFT OUTER JOIN auctions_category c ON c.id = a.category_id  \
         '
-
         if request.path == "/watchlist":
             sql = sql + '\
                 WHERE w.user_id = %s \
             '
-
             user_id = get_user(request).id
             cursor.execute(sql, [user_id])
+        if request.GET.get("categoryname", None) != None:
+            sql = sql + '\
+                WHERE c.id = %s \
+                AND a.closed = 0 \
+            '
+            category_id = request.GET.get("categoryname", None)
+            cursor.execute(sql, [category_id])
         else:
             sql = sql + '\
                 WHERE a.closed=0 \
