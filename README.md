@@ -17,21 +17,7 @@ Design an eBay-like e-commerce auction site that will allow users to post auctio
 
 Some extra features to improve the project.
 
-- [ ] Replace SQLite with MySQL
-- [ ] CD workflow for AWS
-- [ ] Online demo
-- [ ] CD workflow for GCloud
-- [ ] CD workflow for Heroku
-
-## **Deploy Workflow**
-
-- [GCloud App Engine](#) 🚧
-- [AWS](#) 🚧
-- [Heroku](#) 🚧
-
-## **Demo**
-
-[Online Demo](#) 🚧
+- [ ] Implement a clean architecture model
 
 
 # **Commerce**
