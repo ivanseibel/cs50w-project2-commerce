@@ -94,18 +94,20 @@ def index(request):
             LEFT OUTER JOIN auctions_watchlist w ON w.auction_id = a.id  \
             LEFT OUTER JOIN auctions_category c ON c.id = a.category_id  \
         '
+
         if request.path == "/watchlist":
             sql = sql + '\
                 WHERE w.user_id = %s \
             '
             user_id = get_user(request).id
             cursor.execute(sql, [user_id])
-        if request.GET.get("categoryname", None) != None:
+        elif request.GET["category_id"] != "":
             sql = sql + '\
                 WHERE c.id = %s \
                 AND a.closed = 0 \
             '
-            category_id = request.GET.get("categoryname", None)
+            category_id = UUID(str(request.GET["category_id"])).hex
+            print("category_id", category_id)
             cursor.execute(sql, [category_id])
         else:
             sql = sql + '\
@@ -403,3 +405,14 @@ def post_comment(request, auction_id):
             )
     else:
         return HttpResponseRedirect(reverse("index"))
+
+
+def categories(request):
+    # Get categories to show
+    categories = Category.objects.order_by("name").only("id", "name")
+    print(categories)
+
+    # Render page
+    return render(request, "auctions/categories.html", {
+        "categories": categories
+    })

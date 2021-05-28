@@ -23,4 +23,5 @@ urlpatterns = [
          views.close_auction, name="close_auction"),
     path("post_comment/<str:auction_id>",
          views.post_comment, name="post_comment"),
+    path("categories", views.categories, name="categories"),
 ]
