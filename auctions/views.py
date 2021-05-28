@@ -107,7 +107,6 @@ def index(request):
                 AND a.closed = 0 \
             '
             category_id = UUID(str(request.GET["category_id"])).hex
-            print("category_id", category_id)
             cursor.execute(sql, [category_id])
         else:
             sql = sql + '\
