@@ -1,3 +1,4 @@
+from django.db import connection
 from django.contrib.auth import authenticate, get_user, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
@@ -23,7 +24,7 @@ def dict_fetch_all(cursor):
     ]
 
 
-def get_auction(auction_id):
+def get_auction(auction_id, user_id):
     with connections['default'].cursor() as cursor:
         sql = ' \
             SELECT \
@@ -37,18 +38,19 @@ def get_auction(auction_id):
                 COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) AS max_bid, \
                 COALESCE((SELECT COUNT(b.id) FROM auctions_bid b WHERE b.auction_id = a.id),0) AS bid_count, \
                 a.created_at, \
-                w.id AS watchlist_id, \
                 (SELECT user_id FROM auctions_bid ab WHERE ab.auction_id = a.id ORDER BY ab.value DESC LIMIT 1) AS user_last_bid, \
+                (SELECT id FROM auctions_watchlist wl WHERE wl.auction_id = a.id AND user_id = :user_id LIMIT 1) AS watchlist_id, \
                 a.closed \
             FROM auctions_auction a \
             INNER JOIN auctions_user u ON u.id = a.user_id \
             LEFT OUTER JOIN auctions_category c ON c.id = a.category_id \
-            LEFT OUTER JOIN auctions_watchlist w ON w.auction_id = a.id \
             WHERE \
-                a.id = %s \
+                a.id = :auction_id \
         '
-        cursor.execute(sql, [auction_id])
+        cursor.execute(sql, {"user_id": user_id, "auction_id": auction_id})
         auctions = dict_fetch_all(cursor)
+        # queries_len = len(connection.queries)
+        # print(connection.queries[queries_len - 1])
 
     if len(auctions) > 0:
         return auctions[0]
@@ -57,7 +59,8 @@ def get_auction(auction_id):
 
 
 def render_show_auction(request, auction_id, message):
-    auction = get_auction(auction_id=auction_id)
+    user_id = get_user(request).id
+    auction = get_auction(auction_id=auction_id, user_id=user_id)
     value_to_show = auction["starting_bid"] if auction[
         "starting_bid"] > auction["max_bid"] else auction["max_bid"]
     comments = Comment.objects.filter(
@@ -88,30 +91,36 @@ def index(request):
                 a.description, \
                 a.starting_bid, \
                 COALESCE((SELECT MAX(b.value) FROM auctions_bid b WHERE b.auction_id = a.id),0) as max_bid, \
+                (SELECT id FROM auctions_watchlist wl WHERE wl.auction_id = a.id AND wl.user_id = :user_id LIMIT 1) AS watchlist_user_id, \
                 a.created_at, \
                 a.closed \
             FROM auctions_auction a \
-            LEFT OUTER JOIN auctions_watchlist w ON w.auction_id = a.id  \
             LEFT OUTER JOIN auctions_category c ON c.id = a.category_id  \
+            LEFT OUTER JOIN (SELECT * FROM auctions_watchlist WHERE user_id = :user_id) w on w.auction_id = a.id \
         '
+        user_id = get_user(request).id
+
         if request.path == "/watchlist":
             sql = sql + '\
-                WHERE w.user_id = %s \
+                WHERE w.user_id = :user_id \
             '
-            user_id = get_user(request).id
-            cursor.execute(sql, [user_id])
+            cursor.execute(sql, {"user_id": user_id})
         elif "category_id" in request.GET:
             sql = sql + '\
-                WHERE c.id = %s \
+                WHERE c.id = :category_id \
                 AND a.closed = 0 \
             '
             category_id = UUID(str(request.GET["category_id"])).hex
-            cursor.execute(sql, [category_id])
+            cursor.execute(
+                sql, {"category_id": category_id, "user_id": user_id})
         else:
             sql = sql + '\
                 WHERE a.closed=0 \
             '
-            cursor.execute(sql)
+            cursor.execute(sql, {"user_id": user_id})
+
+        queries_len = len(connection.queries)
+        print(connection.queries[queries_len - 1])
 
         auctions = dict_fetch_all(cursor)
 
@@ -328,10 +337,12 @@ def post_bid(request, auction_id):
         value = float(request.POST["bid_value"])
         user_id = get_user(request).id
         auction = Auction.objects.get(id=auction_id)
-        bid = auction.bids.all().order_by('-value')[0]
+
+        bid = Bid.objects.filter(auction_id=auction_id).order_by('-value')[0]
         max_bid = bid.value if bid != None else 0
 
-        if not value > max_bid:
+        TWOPLACES = Decimal(10) ** -2
+        if not Decimal(value).quantize(TWOPLACES) > Decimal(max_bid).quantize(TWOPLACES):
             formatted_value = "%.2f" % max_bid
             return render_show_auction(
                 request=request,
@@ -408,7 +419,6 @@ def post_comment(request, auction_id):
 def categories(request):
     # Get categories to show
     categories = Category.objects.order_by("name").only("id", "name")
-    print(categories)
 
     # Render page
     return render(request, "auctions/categories.html", {
